@@ -5,7 +5,7 @@
 -f lib/transcoder-unit/rtl.f
 
 # 2. Local Packages (i.e., rtl/my_pkg.sv)
--f rtl/qrem_pkg.sv
+rtl/qrem_pkg.sv
 
 # 3. Local RTL (i.e., rtl/transcoder_unit.sv)
--f rtl/qrem_core.sv
+rtl/qrem_core.sv
