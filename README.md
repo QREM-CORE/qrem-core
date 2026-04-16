@@ -1,1 +1,1 @@
-# mlkem-hardware-accelerator
+# QREM CORE
