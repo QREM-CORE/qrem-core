@@ -6,6 +6,6 @@
 
 import qrem_pkg::*;
 
-module qrem_core (
+module qrem_core ();
 
 endmodule
