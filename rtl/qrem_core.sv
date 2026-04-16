@@ -1,6 +1,6 @@
 /*
  * Module Name: qrem_core
- * Author(s): Mai Komar, Kiet Le
+ * Author(s): Kiet Le, Quardin Lyttle, Jessica Buentipo, Mai Komar, Salwan Aldhahab, Mavra Muzmmal
  * Description:
  */
 
