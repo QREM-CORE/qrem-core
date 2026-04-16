@@ -3,16 +3,16 @@
 	url = ../build-tools.git
 [submodule "lib/hash-sampler-unit"]
 	path = lib/hash-sampler-unit
-	url = git@github.com:QREM-CORE/hash-sampler-unit.git
+	url = ../hash-sampler-unit.git
 [submodule "lib/poly-arith-unit"]
 	path = lib/poly-arith-unit
-	url = git@github.com:QREM-CORE/poly-arith-unit.git
+	url = ../poly-arith-unit.git
 [submodule "lib/poly-mem-subsystem"]
 	path = lib/poly-mem-subsystem
-	url = git@github.com:QREM-CORE/poly-mem-subsystem.git
+	url = ../poly-mem-subsystem.git
 [submodule "lib/transcoder-unit"]
 	path = lib/transcoder-unit
-	url = git@github.com:QREM-CORE/transcoder-unit.git
+	url = ../transcoder-unit.git
 [submodule "lib/core-control-unit"]
 	path = lib/core-control-unit
-	url = git@github.com:QREM-CORE/core-control-unit.git
+	url = ../core-control-unit.git
