@@ -21,6 +21,10 @@ jobs:
       # Your comma-separated top modules for the Yosys synthesis matrix
       top_modules: 'qrem_core'
 
+      build_tools_ref: 'main'
+
+      synth_targets: 'fpga'
+
       enable_synth: true
       enable_lint: true
       enable_verilator: true
