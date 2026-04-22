@@ -1,4 +1,5 @@
 # 1. Submodules (i.e. -f lib/keccak-fips202-sv/rtl.f)
+-f lib/common-rtl/rtl/qrem_global_pkg.sv
 -f lib/hash-sampler-unit/rtl.f
 -f lib/poly-arith-unit/rtl.f
 -f lib/poly-mem-subsystem/rtl.f
