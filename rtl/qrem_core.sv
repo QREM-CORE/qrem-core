@@ -1,6 +1,13 @@
 /*
  * Module Name: qrem_core
- * Author(s): Kiet Le, Quardin Lyttle, Jessica Buentipo, Mai Komar, Salwan Aldhahab, Mavra Muzmmal
+ * Author(s):
+        York University - Lassonde School of Engineering - Capstone Team 32
+            - Salwan Aldhahab
+            - Jessica Buentipo
+            - Mai Komar
+            - Kiet Le
+            - Quardin Lyttle
+            - Mavra Muzmmal
  * Description:
  */
 
