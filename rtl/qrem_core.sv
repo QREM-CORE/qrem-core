@@ -1,7 +1,7 @@
 /*
  * Module Name: qrem_core
  * Author(s):
-        York University - Lassonde School of Engineering - Capstone Team 32
+        York University - Lassonde School of Engineering - 2026 Capstone - Team 32
             - Salwan Aldhahab
             - Jessica Buentipo
             - Mai Komar
