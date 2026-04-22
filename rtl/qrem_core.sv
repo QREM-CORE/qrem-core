@@ -4,6 +4,7 @@
  * Description:
  */
 
+import qrem_global_pkg::*;
 import qrem_pkg::*;
 
 module qrem_core ();
