@@ -7,7 +7,6 @@
 [submodule "lib/poly-arith-unit"]
 	path = lib/poly-arith-unit
 	url = ../poly-arith-unit.git
-	branch = v075-align-minimal-sync
 [submodule "lib/poly-mem-subsystem"]
 	path = lib/poly-mem-subsystem
 	url = ../poly-mem-subsystem.git
