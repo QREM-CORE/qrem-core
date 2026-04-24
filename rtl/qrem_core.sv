@@ -378,9 +378,11 @@ module qrem_core (
 
         .start_i                (pau_start),
         .op_type_i              (pau_op_mapped),
-        .poly_id_i              (pau_poly_id),
-        .cwm_num_terms_i        (pau_cwm_num_terms),
-        .done_o                 (pau_done),
+
+        // TODO: Add these inputs
+        //.poly_id_i              (pau_poly_id),
+        //.cwm_num_terms_i        (pau_cwm_num_terms),
+        //.done_o                 (pau_done),
 
         // Primary Poly Mem Port
         .pau_req_o              (pau_mem_req),
