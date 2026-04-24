@@ -13,7 +13,7 @@
  * WARNING POINTS:
  *   1. TR, HSU, and PAU do not explicitly export error signals. They are tied to 0 for CCU inputs (tr_err_i, hsu_err_i, pau_err_i).
  *   2. HSU inputs row_i, col_i, cbd_n_i are not exposed by CCU. They are tied to 0.
- *   3. PAU op_type_i is mapped from pau_job.op from CCU.
+ *   3. PAU op_type_i is mapped from pau_job.opcode from CCU.
  */
 
 import qrem_global_pkg::*;
