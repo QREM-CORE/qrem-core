@@ -10,10 +10,13 @@
             - Mavra Muzmmal
  * Description: Top-level integration of the ML-KEM accelerator.
  *
- * WARNING POINTS:
- *   1. TR, HSU, and PAU do not explicitly export error signals. They are tied to 0 for CCU inputs (tr_err_i, hsu_err_i, pau_err_i).
- *   2. HSU inputs row_i, col_i, cbd_n_i are not exposed by CCU. They are tied to 0.
- *   3. PAU op_type_i is mapped from pau_job.opcode from CCU.
+ * BRING-UP NOTES:
+ *   1. TR, HSU, and PAU error outputs are still tied low at the CCU boundary
+ *      until those repos expose top-level error ports.
+ *   2. HSU row/col/cbd_n and PAU job metadata are now sourced from the CCU's
+ *      latched KeyGen sequencing, not hardwired defaults.
+ *   3. PAU's 16-bit coefficient interface is adapted explicitly to the
+ *      Memory subsystem's 12-bit coefficient-domain contract in this top.
  */
 
 import qrem_global_pkg::*;
@@ -52,6 +55,8 @@ module qrem_core (
     output logic                         m_axis_tlast_o
 );
 
+    localparam int PAU_WORD_W = 16;
+
     // =========================================================================
     // Interconnect Wires
     // =========================================================================
@@ -71,6 +76,9 @@ module qrem_core (
     logic [1:0]                     hsu_input_sel;
     logic                           hsu_absorb_poly;
     logic                           hsu_absorb_last;
+    logic [7:0]                     hsu_row;
+    logic [7:0]                     hsu_col;
+    logic [7:0]                     hsu_cbd_n;
     logic                           hsu_done;
     logic                           hsu_packer_done;
     logic                           hsu_hash_ek_read_en;
@@ -79,6 +87,8 @@ module qrem_core (
     logic                           pau_start;
     ctrl_pau_job_t                  pau_job;
     logic                           pau_done;
+    logic [POLY_ID_WIDTH-1:0]       pau_poly_id;
+    logic [POLY_ID_WIDTH-1:0]       pau_cwm_num_terms;
 
     // Memory <-> CCU
     logic                           mem_zeroize_req;
@@ -86,6 +96,7 @@ module qrem_core (
     logic                           mem_fault;
     logic [2:0]                     mem_fault_code;
     ctrl_mem_phase_t                mem_phase; // Sideband debug/intent
+    logic [1:0]                     active_sec_lvl;
 
     // PAU <-> Memory Primary
     logic                           pau_mem_req;
@@ -103,6 +114,8 @@ module qrem_core (
     logic [3:0]                     pau_mem_rd_lane_valid_out;
     logic [3:0][COEFF_WIDTH-1:0]    pau_mem_rd_data;
     logic                           pau_mem_stall;
+    logic [3:0][PAU_WORD_W-1:0]     pau_mem_wr_data_pau;
+    logic [3:0][PAU_WORD_W-1:0]     pau_mem_rd_data_pau;
 
     // PAU <-> Memory Auxiliary
     logic                           pau_aux_req;
@@ -119,6 +132,8 @@ module qrem_core (
     logic [3:0][7:0]                pau_aux_rd_idx_out;
     logic [3:0]                     pau_aux_rd_lane_valid_out;
     logic [3:0][COEFF_WIDTH-1:0]    pau_aux_rd_data;
+    logic [3:0][PAU_WORD_W-1:0]     pau_aux_wr_data_pau;
+    logic [3:0][PAU_WORD_W-1:0]     pau_aux_rd_data_pau;
 
     // HSU <-> Memory (Poly)
     logic                           hsu_mem_req;
@@ -181,6 +196,17 @@ module qrem_core (
     logic                           hash_snoop_ready;
     logic                           hash_snoop_last;
 
+    genvar pau_lane;
+    generate
+        for (pau_lane = 0; pau_lane < 4; pau_lane++) begin : g_pau_coeff_glue
+            assign pau_mem_wr_data[pau_lane]     = pau_mem_wr_data_pau[pau_lane][COEFF_WIDTH-1:0];
+            assign pau_mem_rd_data_pau[pau_lane] = {{(PAU_WORD_W-COEFF_WIDTH){1'b0}}, pau_mem_rd_data[pau_lane]};
+
+            assign pau_aux_wr_data[pau_lane]     = pau_aux_wr_data_pau[pau_lane][COEFF_WIDTH-1:0];
+            assign pau_aux_rd_data_pau[pau_lane] = {{(PAU_WORD_W-COEFF_WIDTH){1'b0}}, pau_aux_rd_data[pau_lane]};
+        end
+    endgenerate
+
 
     // =========================================================================
     // Core Control Unit (CCU)
@@ -220,6 +246,9 @@ module qrem_core (
         .hsu_input_sel_o        (hsu_input_sel),
         .hsu_absorb_poly_o      (hsu_absorb_poly),
         .hsu_absorb_last_o      (hsu_absorb_last),
+        .hsu_row_o              (hsu_row),
+        .hsu_col_o              (hsu_col),
+        .hsu_cbd_n_o            (hsu_cbd_n),
         .hsu_done_i             (hsu_done),
         .hsu_packer_done_i      (hsu_packer_done),
         .hsu_err_i              (4'h0), // See documentation header note 1
@@ -238,7 +267,8 @@ module qrem_core (
 
         // HSU Hash_EK Authorization
         .hsu_hash_ek_read_en_o  (hsu_hash_ek_read_en),
-        .mem_phase_o            (mem_phase)
+        .mem_phase_o            (mem_phase),
+        .active_sec_lvl_o       (active_sec_lvl)
     );
 
     // =========================================================================
@@ -261,9 +291,9 @@ module qrem_core (
 
         .poly_id_i              (hsu_poly_id),
         .seed_id_i              (hsu_seed_id),
-        .row_i                  (8'h00), // See documentation header note 2
-        .col_i                  (8'h00), // See documentation header note 2
-        .cbd_n_i                (8'h00), // See documentation header note 2
+        .row_i                  (hsu_row),
+        .col_i                  (hsu_col),
+        .cbd_n_i                (hsu_cbd_n),
 
         .input_sel_i            (hsu_input_sel),
         .absorb_poly_i          (hsu_absorb_poly),
@@ -312,10 +342,28 @@ module qrem_core (
     // Mapping logic for PAU opcodes
     pe_mode_e pau_op_mapped;
     always_comb begin
+        pau_op_mapped      = PE_MODE_IDLE;
+        pau_poly_id        = '0;
+        pau_cwm_num_terms  = '0;
+
         unique case (pau_job.opcode)
-            PAU_JOB_NTT_IN_PLACE:  pau_op_mapped = PE_MODE_NTT;
-            PAU_JOB_KEYGEN_ROWMAC: pau_op_mapped = PE_MODE_CWM;
-            default:               pau_op_mapped = PE_MODE_IDLE;
+            PAU_JOB_NTT_IN_PLACE: begin
+                pau_op_mapped     = PE_MODE_NTT;
+                pau_poly_id       = pau_job.primary_poly_id;
+                pau_cwm_num_terms = pau_job.k_active;
+            end
+
+            PAU_JOB_KEYGEN_ROWMAC: begin
+                pau_op_mapped     = PE_MODE_CWM;
+                pau_poly_id       = pau_job.row_idx;
+                pau_cwm_num_terms = pau_job.k_active;
+            end
+
+            default: begin
+                pau_op_mapped      = PE_MODE_IDLE;
+                pau_poly_id        = '0;
+                pau_cwm_num_terms  = '0;
+            end
         endcase
     end
 
@@ -323,14 +371,16 @@ module qrem_core (
     // Polynomial Arithmetic Unit (PAU)
     // =========================================================================
     poly_arith_unit #(
-        .NUM_POLYS(NUM_POLYS),
-        .CWM_NUM_TERMS(4) // Configure for up to ML-KEM-1024
+        .NUM_POLYS(NUM_POLYS)
     ) u_pau (
         .clk                    (clk),
         .rst                    (rst),
 
         .start_i                (pau_start),
-        .op_type_i              (pau_op_mapped), // Mapped from pau_job.opcode
+        .op_type_i              (pau_op_mapped),
+        .poly_id_i              (pau_poly_id),
+        .cwm_num_terms_i        (pau_cwm_num_terms),
+        .done_o                 (pau_done),
 
         // Primary Poly Mem Port
         .pau_req_o              (pau_mem_req),
@@ -341,12 +391,12 @@ module qrem_core (
         .pau_wr_en_o            (pau_mem_wr_en),
         .pau_wr_poly_id_o       (pau_mem_wr_poly_id),
         .pau_wr_idx_o           (pau_mem_wr_idx),
-        .pau_wr_data_o          (pau_mem_wr_data),
+        .pau_wr_data_o          (pau_mem_wr_data_pau),
         .pau_rd_valid_i         (pau_mem_rd_valid),
         .pau_rd_poly_id_i       (pau_mem_rd_poly_id_out),
         .pau_rd_idx_i           (pau_mem_rd_idx_out),
         .pau_rd_lane_valid_i    (pau_mem_rd_lane_valid_out),
-        .pau_rd_data_i          (pau_mem_rd_data),
+        .pau_rd_data_i          (pau_mem_rd_data_pau),
         .pau_stall_i            (pau_mem_stall),
 
         // Auxiliary Poly Mem Port
@@ -358,12 +408,12 @@ module qrem_core (
         .pau_aux_wr_en_o        (pau_aux_wr_en),
         .pau_aux_wr_poly_id_o   (pau_aux_wr_poly_id),
         .pau_aux_wr_idx_o       (pau_aux_wr_idx),
-        .pau_aux_wr_data_o      (pau_aux_wr_data),
+        .pau_aux_wr_data_o      (pau_aux_wr_data_pau),
         .pau_aux_rd_valid_i     (pau_aux_rd_valid),
         .pau_aux_rd_poly_id_i   (pau_aux_rd_poly_id_out),
         .pau_aux_rd_idx_i       (pau_aux_rd_idx_out),
         .pau_aux_rd_lane_valid_i(pau_aux_rd_lane_valid_out),
-        .pau_aux_rd_data_i      (pau_aux_rd_data)
+        .pau_aux_rd_data_i      (pau_aux_rd_data_pau)
     );
 
     // =========================================================================
@@ -488,7 +538,7 @@ module qrem_core (
         // Control
         .ctrl_start             (tr_start),
         .ctrl_done              (tr_done),
-        .ctrl_sec_level         (cmd_sec_lvl_i), // Passthrough from host input
+        .ctrl_sec_level         (active_sec_lvl),
         .ctrl_opcode            (tr_opcode),
 
         // Poly Mem
