@@ -309,6 +309,16 @@ module qrem_core (
         .packer_done_o          (hsu_packer_done)
     );
 
+    // Mapping logic for PAU opcodes
+    pe_mode_e pau_op_mapped;
+    always_comb begin
+        unique case (pau_job.opcode)
+            PAU_JOB_NTT_IN_PLACE:  pau_op_mapped = PE_MODE_NTT;
+            PAU_JOB_KEYGEN_ROWMAC: pau_op_mapped = PE_MODE_CWM;
+            default:               pau_op_mapped = PE_MODE_IDLE;
+        endcase
+    end
+
     // =========================================================================
     // Polynomial Arithmetic Unit (PAU)
     // =========================================================================
@@ -320,7 +330,7 @@ module qrem_core (
         .rst                    (rst),
 
         .start_i                (pau_start),
-        .op_type_i              (pau_job.op), // Map to CCU pau_job.op
+        .op_type_i              (pau_op_mapped), // Mapped from pau_job.opcode
 
         // Primary Poly Mem Port
         .pau_req_o              (pau_mem_req),
