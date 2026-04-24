@@ -4,6 +4,7 @@
 -f lib/poly-arith-unit/rtl.f
 -f lib/poly-mem-subsystem/rtl.f
 -f lib/transcoder-unit/rtl.f
+-f lib/core-control-unit/rtl.f
 
 # 2. Local Packages (i.e., rtl/my_pkg.sv)
 rtl/qrem_pkg.sv
