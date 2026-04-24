@@ -1,0 +1,12 @@
+work/
+transcript
+*.vcd
+*.macro
+*.log
+*.txt
+*build.f
+verif/test_vectors/*
+verif/.venv/
+obj_dir/
+test_vectors.json
+test_vectors/*
