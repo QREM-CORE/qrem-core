@@ -17,6 +17,8 @@
  *      latched KeyGen sequencing, not hardwired defaults.
  *   3. PAU's 16-bit coefficient interface is adapted explicitly to the
  *      Memory subsystem's 12-bit coefficient-domain contract in this top.
+ *   4. CCU needs to implement full support for PAU's PE_MODE_ADDSUB mode and the
+ *      is_sub_i flag (currently tied to 1'b0 in top).
  */
 
 import qrem_global_pkg::*;
@@ -88,7 +90,9 @@ module qrem_core (
     ctrl_pau_job_t                  pau_job;
     logic                           pau_done;
     logic [POLY_ID_WIDTH-1:0]       pau_poly_id;
+    logic [POLY_ID_WIDTH-1:0]       pau_aux_poly_id;
     logic [POLY_ID_WIDTH-1:0]       pau_cwm_num_terms;
+    logic                           pau_is_sub;
 
     // Memory <-> CCU
     logic                           mem_zeroize_req;
@@ -344,24 +348,30 @@ module qrem_core (
     always_comb begin
         pau_op_mapped      = PE_MODE_IDLE;
         pau_poly_id        = '0;
+        pau_aux_poly_id    = '0;
         pau_cwm_num_terms  = '0;
+        // TODO: CCU lacks is_sub bit in ctrl_pau_job_t for ADDSUB. Tying to 0 for now.
+        pau_is_sub         = 1'b0;
 
         unique case (pau_job.opcode)
             PAU_JOB_NTT_IN_PLACE: begin
                 pau_op_mapped     = PE_MODE_NTT;
                 pau_poly_id       = pau_job.primary_poly_id;
+                pau_aux_poly_id   = pau_job.aux_poly_id;
                 pau_cwm_num_terms = pau_job.k_active;
             end
 
             PAU_JOB_KEYGEN_ROWMAC: begin
                 pau_op_mapped     = PE_MODE_CWM;
                 pau_poly_id       = pau_job.row_idx;
+                pau_aux_poly_id   = pau_job.aux_poly_id;
                 pau_cwm_num_terms = pau_job.k_active;
             end
 
             default: begin
                 pau_op_mapped      = PE_MODE_IDLE;
                 pau_poly_id        = '0;
+                pau_aux_poly_id    = '0;
                 pau_cwm_num_terms  = '0;
             end
         endcase
@@ -379,10 +389,11 @@ module qrem_core (
         .start_i                (pau_start),
         .op_type_i              (pau_op_mapped),
 
-        // TODO: Add these inputs
-        //.poly_id_i              (pau_poly_id),
-        //.cwm_num_terms_i        (pau_cwm_num_terms),
-        //.done_o                 (pau_done),
+        .primary_poly_id_i      (pau_poly_id),
+        .aux_poly_id_i          (pau_aux_poly_id),
+        .cwm_num_terms_i        (pau_cwm_num_terms),
+        .is_sub_i               (pau_is_sub),
+        .done_o                 (pau_done),
 
         // Primary Poly Mem Port
         .pau_req_o              (pau_mem_req),
